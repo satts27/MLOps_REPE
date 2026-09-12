@@ -1,6 +1,6 @@
 stages:
   prepare:
-    cmd: python experiments/prepare_data.py --tickers AAPL MSFT GOOGL AMZN META --start ${data.start} --end ${data.end} --output data/processed.csv
+    cmd: python -m experiments.prepare_data --tickers AAPL MSFT GOOGL AMZN META --start ${data.start} --end ${data.end} --output data/processed.csv
     deps:
       - experiments/prepare_data.py
       - experiments/Baseline_yfinance.py
@@ -9,7 +9,7 @@ stages:
     outs:
       - data/processed.csv
   train:
-    cmd: python experiments/train.py --data data/processed.csv --output-dir outputs --model-dir models/baseline --a2c-timesteps ${train.a2c_timesteps} --ppo-timesteps ${train.ppo_timesteps} --ddpg-timesteps ${train.ddpg_timesteps} --rebalance-window ${train.rebalance_window} --validation-window ${train.validation_window} --test-window ${train.test_window} --seed ${train.seed}
+    cmd: python -m experiments.train --data data/processed.csv --output-dir outputs --model-dir models/baseline --a2c-timesteps ${train.a2c_timesteps} --ppo-timesteps ${train.ppo_timesteps} --ddpg-timesteps ${train.ddpg_timesteps} --rebalance-window ${train.rebalance_window} --validation-window ${train.validation_window} --test-window ${train.test_window} --seed ${train.seed}
     deps:
       - experiments/train.py
       - experiments/Baseline_yfinance.py

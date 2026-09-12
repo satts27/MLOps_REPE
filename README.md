@@ -28,8 +28,8 @@ The `dvc init` command is only needed once, and creates the local `.dvc/` metada
 ## Run a fast demo
 
 ```powershell
-python experiments/prepare_data.py --start 2024-01-01 --end 2024-04-30
-python experiments/train.py --quick
+python -m experiments.prepare_data --start 2024-01-01 --end 2024-04-30
+python -m experiments.train --quick
 mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5001
 ```
 
@@ -51,13 +51,13 @@ The BERT and multimodal scripts remain separate because they require external Fi
 Run the one-time historical bootstrap first:
 
 ```powershell
-python ingestion/collect_market_data.py --profile bootstrap
+python -m ingestion.collect_market_data --profile bootstrap
 ```
 
 This loads 120 calendar days of market data and 7 days of news. Schedule the nightly profile afterward:
 
 ```powershell
-python ingestion/collect_market_data.py --profile nightly
+python -m ingestion.collect_market_data --profile nightly
 ```
 
 The nightly profile collects a short overlap window and upserts by `ticker + trading_date` for prices and `ticker + article_id` for news. That makes reruns safe and lets late data corrections update existing records instead of creating duplicates.

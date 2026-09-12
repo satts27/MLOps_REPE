@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   prepare:
-    cmd: python experiments/prepare_data.py --tickers AAPL MSFT GOOGL AMZN META --start
+    cmd: python -m experiments.prepare_data --tickers AAPL MSFT GOOGL AMZN META --start
       2024-01-01 --end 2024-04-30 --output data/processed.csv
     deps:
     - path: experiments/Baseline_yfinance.py
@@ -29,7 +29,7 @@ stages:
       md5: 658acb7e28406d606bfcdc94cdf50fab
       size: 81964
   train:
-    cmd: python experiments/train.py --data data/processed.csv --output-dir outputs
+    cmd: python -m experiments.train --data data/processed.csv --output-dir outputs
       --model-dir models/baseline --a2c-timesteps 5000 --ppo-timesteps 10000 
       --ddpg-timesteps 5000 --rebalance-window 15 --validation-window 15 
       --test-window 30 --seed 42
