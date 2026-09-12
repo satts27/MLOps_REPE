@@ -1,0 +1,68 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python prepare_data.py --tickers AAPL MSFT GOOGL AMZN META --start 
+      2024-01-01 --end 2024-04-30 --output data/processed.csv
+    deps:
+    - path: Baseline_yfinance.py
+      hash: md5
+      md5: 213e0cc0bbf5b3e1b78150e69d721b78
+      size: 19791
+    - path: prepare_data.py
+      hash: md5
+      md5: 7793ac794bc06609eda1f4c19d2f6a9d
+      size: 1070
+    params:
+      params.yaml:
+        data:
+          tickers:
+          - AAPL
+          - MSFT
+          - GOOGL
+          - AMZN
+          - META
+          start: '2024-01-01'
+          end: '2024-04-30'
+    outs:
+    - path: data/processed.csv
+      hash: md5
+      md5: 658acb7e28406d606bfcdc94cdf50fab
+      size: 81964
+  train:
+    cmd: python train.py --data data/processed.csv --output-dir outputs 
+      --model-dir models/baseline --a2c-timesteps 5000 --ppo-timesteps 10000 
+      --ddpg-timesteps 5000 --rebalance-window 15 --validation-window 15 
+      --test-window 30 --seed 42
+    deps:
+    - path: Baseline_yfinance.py
+      hash: md5
+      md5: 213e0cc0bbf5b3e1b78150e69d721b78
+      size: 19791
+    - path: data/processed.csv
+      hash: md5
+      md5: 658acb7e28406d606bfcdc94cdf50fab
+      size: 81964
+    - path: train.py
+      hash: md5
+      md5: 16ad48ee7963900b1c4c6e0339680304
+      size: 3819
+    params:
+      params.yaml:
+        train:
+          a2c_timesteps: 5000
+          ppo_timesteps: 10000
+          ddpg_timesteps: 5000
+          rebalance_window: 15
+          validation_window: 15
+          test_window: 30
+          seed: 42
+    outs:
+    - path: models/baseline
+      hash: md5
+      md5: c4b3293adfad7fb2bb9c8156b5e30efe.dir
+      size: 4667712
+      nfiles: 3
+    - path: outputs/ensemble_summary.csv
+      hash: md5
+      md5: ee472c085e4782ea749faad5bd487c96
+      size: 501

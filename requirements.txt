@@ -1,0 +1,9 @@
+dvc
+mlflow
+numpy
+pandas
+yfinance
+gymnasium
+stable-baselines3
+ta
+matplotlib

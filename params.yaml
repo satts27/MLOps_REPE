@@ -1,0 +1,12 @@
+data:
+  tickers: [AAPL, MSFT, GOOGL, AMZN, META]
+  start: "2024-01-01"
+  end: "2024-04-30"
+train:
+  a2c_timesteps: 5000
+  ppo_timesteps: 10000
+  ddpg_timesteps: 5000
+  rebalance_window: 15
+  validation_window: 15
+  test_window: 30
+  seed: 42

@@ -1,0 +1,21 @@
+stages:
+  prepare:
+    cmd: python prepare_data.py --tickers AAPL MSFT GOOGL AMZN META --start ${data.start} --end ${data.end} --output data/processed.csv
+    deps:
+      - prepare_data.py
+      - Baseline_yfinance.py
+    params:
+      - data
+    outs:
+      - data/processed.csv
+  train:
+    cmd: python train.py --data data/processed.csv --output-dir outputs --model-dir models/baseline --a2c-timesteps ${train.a2c_timesteps} --ppo-timesteps ${train.ppo_timesteps} --ddpg-timesteps ${train.ddpg_timesteps} --rebalance-window ${train.rebalance_window} --validation-window ${train.validation_window} --test-window ${train.test_window} --seed ${train.seed}
+    deps:
+      - train.py
+      - Baseline_yfinance.py
+      - data/processed.csv
+    params:
+      - train
+    outs:
+      - outputs/ensemble_summary.csv
+      - models/baseline
