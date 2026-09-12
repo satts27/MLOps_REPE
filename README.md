@@ -2,6 +2,18 @@
 
 This project now has a DVC pipeline around the yfinance RL baseline and MLflow tracking for each training run.
 
+## Project layout
+
+```text
+backend/      Flask API and multimodal prediction serving
+experiments/  Baseline, BERT, multimodal, and MLflow training code
+ingestion/    MongoDB market/news collector
+frontend/     Web application
+data/         DVC-managed input data
+models/       DVC-managed model artifacts
+outputs/      Training and prediction outputs
+```
+
 ## Setup
 
 ```powershell
@@ -16,8 +28,8 @@ The `dvc init` command is only needed once, and creates the local `.dvc/` metada
 ## Run a fast demo
 
 ```powershell
-python prepare_data.py --start 2024-01-01 --end 2024-04-30
-python train.py --quick
+python experiments/prepare_data.py --start 2024-01-01 --end 2024-04-30
+python experiments/train.py --quick
 mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5001
 ```
 
@@ -39,13 +51,13 @@ The BERT and multimodal scripts remain separate because they require external Fi
 Run the one-time historical bootstrap first:
 
 ```powershell
-python collect_market_data.py --profile bootstrap
+python ingestion/collect_market_data.py --profile bootstrap
 ```
 
 This loads 120 calendar days of market data and 7 days of news. Schedule the nightly profile afterward:
 
 ```powershell
-python collect_market_data.py --profile nightly
+python ingestion/collect_market_data.py --profile nightly
 ```
 
 The nightly profile collects a short overlap window and upserts by `ticker + trading_date` for prices and `ticker + article_id` for news. That makes reruns safe and lets late data corrections update existing records instead of creating duplicates.

@@ -1,16 +1,16 @@
 schema: '2.0'
 stages:
   prepare:
-    cmd: python prepare_data.py --tickers AAPL MSFT GOOGL AMZN META --start 
+    cmd: python experiments/prepare_data.py --tickers AAPL MSFT GOOGL AMZN META --start
       2024-01-01 --end 2024-04-30 --output data/processed.csv
     deps:
-    - path: Baseline_yfinance.py
+    - path: experiments/Baseline_yfinance.py
       hash: md5
       md5: 213e0cc0bbf5b3e1b78150e69d721b78
       size: 19791
-    - path: prepare_data.py
+    - path: experiments/prepare_data.py
       hash: md5
-      md5: 7793ac794bc06609eda1f4c19d2f6a9d
+      md5: 08d1f4165087bdf452683d5d482a11be
       size: 1070
     params:
       params.yaml:
@@ -29,12 +29,12 @@ stages:
       md5: 658acb7e28406d606bfcdc94cdf50fab
       size: 81964
   train:
-    cmd: python train.py --data data/processed.csv --output-dir outputs 
+    cmd: python experiments/train.py --data data/processed.csv --output-dir outputs
       --model-dir models/baseline --a2c-timesteps 5000 --ppo-timesteps 10000 
       --ddpg-timesteps 5000 --rebalance-window 15 --validation-window 15 
       --test-window 30 --seed 42
     deps:
-    - path: Baseline_yfinance.py
+    - path: experiments/Baseline_yfinance.py
       hash: md5
       md5: 213e0cc0bbf5b3e1b78150e69d721b78
       size: 19791
@@ -42,9 +42,9 @@ stages:
       hash: md5
       md5: 658acb7e28406d606bfcdc94cdf50fab
       size: 81964
-    - path: train.py
+    - path: experiments/train.py
       hash: md5
-      md5: 16ad48ee7963900b1c4c6e0339680304
+      md5: 262cf83c1cfe442ab908c698b06a925b
       size: 3819
     params:
       params.yaml:

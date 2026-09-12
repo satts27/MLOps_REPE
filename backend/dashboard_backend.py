@@ -29,7 +29,7 @@ from ta.trend import ADXIndicator, CCIIndicator, MACD
 # CONFIG
 # =========================================================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 OUTPUT_DIR = BASE_DIR / "outputs"
 DEFAULT_MODEL_PATH = BASE_DIR / "models" / "multimodal" / "window_60" / "A2C.zip"
@@ -364,7 +364,7 @@ def load_prediction_module():
     global _prediction_module
 
     if _prediction_module is None:
-        import MultiModal_Prediction as predictor
+        from backend import MultiModal_Prediction as predictor
 
         _prediction_module = predictor
 

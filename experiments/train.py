@@ -6,7 +6,7 @@ from pathlib import Path
 import mlflow
 import pandas as pd
 
-import Baseline_yfinance as baseline
+from experiments import Baseline_yfinance as baseline
 
 
 def finite_metric(value: float) -> float | None:

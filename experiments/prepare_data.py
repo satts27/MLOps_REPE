@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-import Baseline_yfinance as baseline
+from experiments import Baseline_yfinance as baseline
 
 
 def main() -> None:

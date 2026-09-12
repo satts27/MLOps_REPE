@@ -11,7 +11,7 @@ import yfinance as yf
 
 from stable_baselines3 import A2C, DDPG, PPO
 
-import MultimodalTransformer as multimodal
+from experiments import MultimodalTransformer as multimodal
 
 
 MODEL_LOADERS = {
