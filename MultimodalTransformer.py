@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import os
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import finnhub
 import torch
 import torch.nn as nn
+from dotenv import load_dotenv
 
 from pathlib import Path
 from datetime import datetime, timedelta
+
+load_dotenv()
 
 from transformers import (
     AutoTokenizer,
@@ -78,7 +82,7 @@ PRICE_FEATURES = [
     "adx"
 ]
 
-FINNHUB_API_KEY = "d7v50j9r01qp7l712mq0d7v50j9r01qp7l712mqg"
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 
 FINBERT_MODEL = "ProsusAI/finbert"
 FINBERT_REVISION = "7db323f79b751944bcfa66298ec06977e4518306"

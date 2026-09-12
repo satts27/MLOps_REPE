@@ -1,6 +1,9 @@
 __pycache__/
 *.pyc
 .venv/
+.env
+.env.*
+!.env.example
 .mlflow/
 mlruns/
 mlflow.db
@@ -8,3 +11,15 @@ mlflow.db-*
 outputs/
 models/
 data/*.csv
+
+# Frontend dependencies, build output, and tool caches
+frontend/node_modules/
+frontend/dist/
+frontend/.tanstack/
+frontend/.wrangler/
+frontend/.lovable/
+frontend/*.log
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*

@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import os
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import finnhub
+from dotenv import load_dotenv
 
 from pathlib import Path
 from datetime import datetime, timedelta
+
+load_dotenv()
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -123,7 +127,7 @@ class TrainingProgressCallback(BaseCallback):
 # FINNHUB CLIENT
 # =========================================================
 
-FINNHUB_API_KEY = "d7v50j9r01qp7l712mq0d7v50j9r01qp7l712mqg"
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
 
 finnhub_client = finnhub.Client(
     api_key=FINNHUB_API_KEY
