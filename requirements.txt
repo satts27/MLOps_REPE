@@ -7,3 +7,7 @@ gymnasium
 stable-baselines3
 ta
 matplotlib
+finnhub-python
+transformers
+python-dotenv
+pymongo
