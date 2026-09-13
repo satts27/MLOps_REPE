@@ -1,0 +1,12 @@
+flask
+flask-cors
+finnhub-python
+numpy
+pandas
+pymongo
+python-dotenv
+stable-baselines3
+ta
+torch
+transformers
+yfinance

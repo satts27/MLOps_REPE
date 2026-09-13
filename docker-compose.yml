@@ -1,0 +1,56 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - .env
+    environment:
+      BACKEND_HOST: 0.0.0.0
+      BACKEND_PORT: 5000
+      FLASK_DEBUG: "0"
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./models:/app/models:ro
+      - ./outputs:/app/outputs
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_BASE: http://127.0.0.1:5000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  mlflow:
+    image: python:3.11-slim
+    working_dir: /mlflow
+    environment:
+      MLFLOW_HOST: 0.0.0.0
+    volumes:
+      - ./mlflow.db:/mlflow/mlflow.db
+      - ./mlruns:/mlflow/mlruns
+    ports:
+      - "5001:5001"
+    command: >-
+      sh -c "pip install --no-cache-dir mlflow &&
+      mlflow server --backend-store-uri sqlite:///mlflow.db
+      --host 0.0.0.0 --port 5001"
+    restart: unless-stopped
+
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile.collector
+    env_file:
+      - .env
+    environment:
+      MONGODB_DATABASE: mlops_repe
+    profiles:
+      - collector

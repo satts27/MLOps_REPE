@@ -63,3 +63,27 @@ python -m ingestion.collect_market_data --profile nightly
 The nightly profile collects a short overlap window and upserts by `ticker + trading_date` for prices and `ticker + article_id` for news. That makes reruns safe and lets late data corrections update existing records instead of creating duplicates.
 
 The nightly GitHub Actions job installs only `requirements-collector.txt`. The full `requirements.txt` remains for model training and MLflow, so data ingestion does not install the heavier deep-learning stack.
+
+## Docker
+
+Docker Compose runs the application services with these ports:
+
+```text
+Backend:  http://127.0.0.1:5000
+Frontend: http://127.0.0.1:5173
+MLflow:   http://127.0.0.1:5001
+```
+
+Create `.env` in the project root with local credentials, then start the stack:
+
+```powershell
+docker compose up --build
+```
+
+Run the collector manually in Docker:
+
+```powershell
+docker compose --profile collector run --rm collector
+```
+
+Models and outputs remain outside the backend image and are mounted at runtime. MongoDB Atlas remains external; Docker does not start a local MongoDB service.
