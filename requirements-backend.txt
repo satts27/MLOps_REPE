@@ -1,5 +1,6 @@
 flask
 flask-cors
+prometheus-client>=0.21,<1
 finnhub-python
 numpy
 pandas

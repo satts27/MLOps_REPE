@@ -1,5 +1,8 @@
 dvc
 mlflow
+flask
+flask-cors
+prometheus-client>=0.21,<1
 numpy
 pandas
 yfinance

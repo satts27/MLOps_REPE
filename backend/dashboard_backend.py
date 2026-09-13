@@ -10,6 +10,7 @@ import yfinance as yf
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
+from backend.metrics import instrument_app
 
 try:
     from flask_cors import CORS
@@ -58,6 +59,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 MONGODB_DATABASE = os.getenv("MONGODB_DATABASE", "mlops_repe")
 
 app = Flask(__name__)
+instrument_app(app)
 
 if CORS is not None:
     CORS(app)
