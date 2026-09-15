@@ -5,7 +5,7 @@ An end-to-end stock analytics project with a Flask API, React/TanStack frontend,
 ## Prerequisites
 
 - Python 3.11 recommended
-- Node.js 20 or newer
+- Node.js 22 or newer (the frontend Docker image uses Node.js 22)
 - Docker Desktop, if using containers
 - Git and DVC
 - MongoDB Atlas account for ingestion and stored dashboard data
@@ -46,6 +46,33 @@ MONGODB_DATABASE=mlops_repe
 ```
 
 Never commit `.env`. It is ignored by Git. Add the same values as GitHub repository secrets named `FINNHUB_API_KEY` and `MONGODB_URI` for Actions.
+
+## Quick start with Docker Desktop
+
+From the project root, configure `.env` as above and make sure Docker Desktop is running. Python and Node do not need to be installed on the host for this route.
+
+Prepare the mounted directories and SQLite file, then start all application and monitoring services:
+
+```powershell
+New-Item -ItemType Directory -Force models, outputs, mlruns | Out-Null
+if (-not (Test-Path -LiteralPath mlflow.db)) {
+    New-Item -ItemType File -Path mlflow.db | Out-Null
+}
+docker compose up -d --build
+docker compose ps
+```
+
+Open the frontend at http://127.0.0.1:5173, MLflow at http://127.0.0.1:5001, Grafana at http://127.0.0.1:3000 (default login `admin` / `admin`), and Prometheus at http://127.0.0.1:9090. The backend health URL is http://127.0.0.1:5000/api/health. The first build can take several minutes.
+
+Prices can fall back to live data before MongoDB is populated. To populate MongoDB, run the one-time bootstrap:
+
+```powershell
+docker compose --profile collector run --rm collector python -m ingestion.collect_market_data --profile bootstrap
+```
+
+Prediction serving requires both `models/multimodal/window_60/A2C.zip` and `outputs/multimodal_transformer_latest.pt`, plus the Finnhub key. These artifacts are not bundled in published images. Restore them from your artifact store, or train the multimodal model and select the matching checkpoint/model paths. Baseline training produces different models and does not supply these multimodal artifacts. The dashboard can show prices and news before predictions are available.
+
+Use `docker compose logs --tail 50 backend frontend mlflow prometheus grafana` to inspect startup failures and `docker compose down` to stop the stack.
 
 ## Python Setup
 
@@ -106,9 +133,23 @@ dvc repro
 mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5001
 ```
 
-DVC tracks the prepared dataset and training outputs. MLflow records parameters, Sharpe metrics, the selected model, the summary CSV, and trained model artifacts. Use `dvc dag` to show the stage graph and `dvc metrics show` to inspect the generated summary.
+DVC tracks the prepared dataset and training outputs. MLflow records parameters, Sharpe metrics, the selected model, the summary CSV, and trained model artifacts. Use `dvc dag` to show the stage graph and inspect `outputs/ensemble_summary.csv` for the generated summary.
 
 The BERT and multimodal scripts require external FinBERT/Finnhub resources and are kept under `experiments/`.
+
+## Quarterly baseline experiments
+
+Run the nine quarters from Q2 2024 through Q2 2026:
+
+Activate the Python environment from **Python Setup** first. These runs are tracked in MLflow; they are not created with `dvc exp run` and will not appear as DVC experiments in the editor extension.
+
+```powershell
+python -m experiments.run_quarters
+```
+
+Each quarter uses the five configured tickers and trains A2C (5,000 steps), PPO (10,000 steps), and DDPG (5,000 steps), with seed 42. The quarterly runs use 15-day rebalance and validation windows and a holdout of up to 15 trading days, shortened when needed to leave at least one rolling training window. The default 30-day holdout leaves no rolling training windows in a single quarter. MLflow records the holdout length for each run. The final holdout is excluded from training/validation, but the current baseline does not evaluate it. Reported Sharpe scores are validation scores.
+
+The runner downloads 90 calendar days before each quarter for feature warmup, then restricts training data to the quarter. Quarter ends are inclusive; Yahoo Finance requests use the first day of the next quarter as their exclusive end. MLflow experiments are named `baseline-2024Q2`, `baseline-2024Q3`, and so on. Data, logs, and summaries go under `outputs/quarterly/<quarter>/`, models under `models/quarterly/<quarter>/`, and the aggregate results to `outputs/quarterly/comparison.csv`. Completed quarters have a `completed.json` marker and are skipped when restarting the runner. Existing default datasets and dashboard models are preserved.
 
 ## MongoDB collection lifecycle
 
@@ -130,7 +171,7 @@ The nightly GitHub Actions job installs only `requirements-collector.txt`. The f
 
 ## GitHub Actions
 
-The workflow at `.github/workflows/nightly-ingestion.yml` runs the nightly collector at `01:15 UTC` and can also be started manually from the repository's **Actions** tab.
+The workflow at `.github/workflows/nightly-ingestion.yml` runs the nightly collector at `01:15 UTC` (`06:45 IST`) and can also be started manually from the repository's **Actions** tab. Keep the workflow on the default branch for scheduled runs.
 
 Add these repository secrets before running it:
 
@@ -144,6 +185,28 @@ The workflow executes:
 ```text
 python -m ingestion.collect_market_data --profile nightly
 ```
+
+## Publish images to Docker Hub
+
+The workflow `.github/workflows/docker-publish.yml` builds and pushes all three application images on every push to `main`, including documentation-only pushes. It also supports **Actions > Publish Docker images > Run workflow** on `main`.
+
+Add repository Actions secrets `DOCKERHUB_USERNAME` (your Docker ID) and `DOCKERHUB_TOKEN` (a Docker Hub personal access token with Read and Write permissions). The workflow uses the username secret as the image namespace, so no username needs to be hardcoded.
+
+Add them under **GitHub repository > Settings > Secrets and variables > Actions > New repository secret**. Store the token there, not in `.env` or source code. These publishing secrets are separate from the ingestion secrets `MONGODB_URI` and `FINNHUB_API_KEY`.
+
+Create these repositories in that Docker Hub account:
+
+- `<username>/mlops-repe-backend`
+- `<username>/mlops-repe-frontend`
+- `<username>/mlops-repe-collector`
+
+Each image receives `latest` and `sha-<full Git commit SHA>` tags. Builds target `linux/amd64` and use a separate GitHub Actions build cache per service. Each push starts its own run. When builds overlap, `latest` refers to the last build that finishes publishing; use the commit SHA tag to deploy a specific version. The three images publish independently, so check that all three jobs succeed for the chosen commit.
+
+Check the three build jobs under **Actions > Publish Docker images**, then inspect the **Tags** tab in each Docker Hub repository. This workflow publishes images; deployment and model training remain separate. Prometheus and Grafana continue to use their official images. The frontend image currently runs the Vite development server, matching the existing Dockerfile.
+
+Credentials and local environment files are excluded from Docker build contexts. Supply application credentials at runtime; model artifacts remain mounted separately. The local Compose stack still builds from source.
+
+The workflow uses the official [Docker GitHub Actions](https://docs.docker.com/build/ci/github-actions/).
 
 ## Docker
 
@@ -160,7 +223,7 @@ Grafana:    http://127.0.0.1:3000
 After creating `.env`, start the application stack:
 
 ```powershell
-docker compose up --build
+docker compose up -d --build
 ```
 
 Services:

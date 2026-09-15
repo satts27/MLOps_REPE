@@ -5,6 +5,7 @@ from pathlib import Path
 
 import mlflow
 import pandas as pd
+import torch
 
 from experiments import Baseline_yfinance as baseline
 
@@ -27,7 +28,11 @@ def main() -> None:
     parser.add_argument("--test-window", type=int, default=baseline.TEST_WINDOW)
     parser.add_argument("--seed", type=int, default=baseline.SEED)
     parser.add_argument("--quick", action="store_true", help="Use small timesteps for a smoke run.")
+    parser.add_argument("--torch-threads", type=int, default=1, help="CPU threads for the small policy networks.")
     args = parser.parse_args()
+    if args.torch_threads < 1:
+        parser.error("--torch-threads must be positive")
+    torch.set_num_threads(args.torch_threads)
 
     if args.quick:
         args.a2c_timesteps = min(args.a2c_timesteps, 200)
@@ -59,8 +64,11 @@ def main() -> None:
             "validation_window": args.validation_window,
             "test_window": args.test_window,
             "seed": args.seed,
+            "torch_threads": args.torch_threads,
             "rows": len(data),
             "tickers": data["tic"].nunique(),
+            "data_start": str(data["datadate"].min().date()),
+            "data_end": str(data["datadate"].max().date()),
         })
         mlflow.log_artifact(str(args.data), artifact_path="data")
 

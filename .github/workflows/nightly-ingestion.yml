@@ -28,4 +28,3 @@ jobs:
           MONGODB_DATABASE: mlops_repe
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
         run: python ingestion/collect_market_data.py --profile nightly
-secrets.FINNHUB_API_KEY
