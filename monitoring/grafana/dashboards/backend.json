@@ -31,7 +31,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "up{job=\"backend\"}",
+          "expr": "sum(up{job=\"backend\"})",
           "legendFormat": "{{route}} {{status}}",
           "datasource": {
             "type": "prometheus",

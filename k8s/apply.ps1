@@ -17,7 +17,7 @@ kubectl create secret generic mlops-repe-env `
     --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl create configmap prometheus-config `
-    --from-file=prometheus.yml=monitoring/prometheus/prometheus.yml `
+    --from-file=prometheus.yml=k8s/prometheus.yml `
     --namespace mlops-repe `
     --dry-run=client -o yaml | kubectl apply -f -
 kubectl create configmap grafana-datasource `

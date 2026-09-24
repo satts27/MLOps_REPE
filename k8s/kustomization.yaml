@@ -6,4 +6,5 @@ resources:
   - backend.yaml
   - frontend.yaml
   - prometheus.yaml
+  - prometheus-rbac.yaml
   - grafana.yaml

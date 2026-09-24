@@ -12,6 +12,7 @@ spec:
       labels:
         app: prometheus
     spec:
+      serviceAccountName: prometheus
       securityContext:
         runAsUser: 65534
         runAsGroup: 65534
