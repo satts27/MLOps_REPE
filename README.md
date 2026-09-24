@@ -293,6 +293,33 @@ Instrumentation currently supports the single-process backend used by this Compo
 
 The setup follows the official [Prometheus Flask integration](https://prometheus.github.io/client_python/exporting/http/flask/) and [Grafana provisioning documentation](https://grafana.com/docs/grafana/latest/administration/provisioning/).
 
+## Kubernetes
+
+Local manifests under `k8s/` run the backend, frontend, Prometheus, and Grafana in Docker Desktop Kubernetes. Each Deployment has one replica. MLflow and the collector stay on Compose. MongoDB Atlas stays outside the cluster.
+
+Turn on Kubernetes in Docker Desktop, build the local images, then apply:
+
+```powershell
+docker compose build backend frontend
+.\k8s\apply.ps1
+```
+
+`apply.ps1` creates the `mlops-repe` namespace, loads `.env` into the `mlops-repe-env` Secret, copies the Prometheus and Grafana files from `monitoring/` into ConfigMaps, and applies the manifests. On Docker Desktop it also mounts `models/` and `outputs/` into the backend. `k8s/secret.example.yaml` shows the expected keys and is not applied.
+
+Prometheus still scrapes the Service named `backend` on port `5000`. Grafana still uses `http://prometheus:9090`. The frontend keeps `VITE_API_BASE=http://127.0.0.1:5000`, so port-forward both the API and the UI.
+
+Compose already binds these ports. Stop it before forwarding:
+
+```powershell
+docker compose stop
+kubectl -n mlops-repe port-forward svc/backend 5000:5000
+kubectl -n mlops-repe port-forward svc/frontend 5173:5173
+kubectl -n mlops-repe port-forward svc/prometheus 9090:9090
+kubectl -n mlops-repe port-forward svc/grafana 3000:3000
+```
+
+Open the same local URLs as Compose. Grafana's login is `admin` / `admin`.
+
 ## Useful Commands
 
 ```powershell
@@ -303,6 +330,7 @@ python -m ingestion.collect_market_data --profile nightly --dry-run
 docker compose ps
 docker compose logs backend
 docker compose down
+kubectl get pods -n mlops-repe
 ```
 
 For another machine, restore DVC-managed artifacts before starting the backend:
