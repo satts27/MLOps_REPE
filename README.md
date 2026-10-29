@@ -244,6 +244,39 @@ docker compose --profile collector run --rm collector
 
 The backend image mounts `models/` and `outputs/` at runtime. MongoDB Atlas remains external; Docker does not start a local MongoDB service.
 
+## Jenkins and Kubernetes
+
+`Jenkinsfile` provides CI/CD for the `main` branch: it compiles the Python modules, builds the frontend, builds and publishes the backend, collector, and frontend images to Docker Hub with both `sha-<commit>` and `latest` tags, then deploys the commit-tagged backend and frontend to Kubernetes. Other branches run validation only.
+
+Configure a Jenkins Multibranch Pipeline for this repository. The Jenkins agent must have Git, Python 3.11, Node.js 22 with npm, Docker, `kubectl`, and network access to the Docker daemon and target cluster. Add these Jenkins credentials:
+
+| Credential ID | Jenkins type | Used for |
+| --- | --- | --- |
+| `dockerhub-credentials` | Username with password | Docker Hub username and access token |
+| `kubeconfig` | Secret file | Kubernetes cluster credentials |
+
+Make sure the Docker Hub image repositories from **Publish images to Docker Hub** exist. The cluster must be able to pull them (public repositories need no additional setup). Install an NGINX Ingress Controller and configure DNS or a local hosts entry for `mlops-repe.local` to resolve to its address.
+
+Before the first deployment, create the application secret and restore model artifacts to the persistent volumes. Create `k8s/app-secrets.env` with only these keys and values (do not commit it):
+
+```env
+MONGODB_URI=your_mongodb_connection_string
+FINNHUB_API_KEY=your_finnhub_api_key
+```
+
+Apply the secret once:
+
+```sh
+kubectl create namespace mlops-repe
+kubectl create secret generic mlops-repe-secrets \
+  --namespace mlops-repe \
+  --from-env-file=k8s/app-secrets.env
+```
+
+The pipeline creates two 5 GiB persistent volume claims for `models/` and `outputs/`; the cluster needs a default StorageClass capable of provisioning `ReadWriteOnce` volumes. Copy `models/multimodal/window_60/A2C.zip` into the models volume and `outputs/multimodal_transformer_latest.pt` into the outputs volume before relying on predictions. The API and frontend can start without these artifacts, but prediction serving cannot. Keep the environment file secure and remove it after creating/updating the Kubernetes Secret. To rotate credentials, rerun the secret creation command with `--dry-run=client -o yaml | kubectl apply -f -` after editing the file, then restart the backend deployment with `kubectl rollout restart deployment/mlops-repe-backend --namespace mlops-repe`.
+
+The Kubernetes manifests are in [k8s/application.yaml](./k8s/application.yaml). They expose the frontend and backend internally and route `/api` and `/metrics` to the backend through Ingress; `/` serves the frontend. The frontend image is built with an empty `VITE_API_BASE` so browser requests use the same Ingress host. The Compose build instead sets the API base to `http://127.0.0.1:5000`.
+
 ## Prometheus and Grafana
 
 Prometheus collects backend metrics, and Grafana displays them in a dashboard. Compose uses the official prebuilt images `prom/prometheus:v3.5.0` and `grafana/grafana:12.1.0`; neither monitoring service needs a custom Dockerfile. Adding the services to Compose configures them. The following command downloads missing images, builds the backend, and creates and starts the containers:

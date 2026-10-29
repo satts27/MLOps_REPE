@@ -4,6 +4,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+k8s/app-secrets.env
 .mlflow/
 mlruns/
 mlflow.db

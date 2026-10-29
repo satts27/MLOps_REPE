@@ -1,0 +1,211 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlops-repe
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mlops-repe-config
+  namespace: mlops-repe
+data:
+  BACKEND_HOST: "0.0.0.0"
+  BACKEND_PORT: "5000"
+  MONGODB_DATABASE: "mlops_repe"
+  FLASK_DEBUG: "0"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlops-repe-models
+  namespace: mlops-repe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mlops-repe-outputs
+  namespace: mlops-repe
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlops-repe-backend
+  namespace: mlops-repe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlops-repe-backend
+  template:
+    metadata:
+      labels:
+        app: mlops-repe-backend
+    spec:
+      containers:
+        - name: backend
+          image: docker.io/DOCKERHUB_USERNAME/mlops-repe-backend:IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: mlops-repe-config
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-repe-secrets
+                  key: MONGODB_URI
+            - name: FINNHUB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mlops-repe-secrets
+                  key: FINNHUB_API_KEY
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          volumeMounts:
+            - name: models
+              mountPath: /app/models
+              readOnly: true
+            - name: outputs
+              mountPath: /app/outputs
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: mlops-repe-models
+        - name: outputs
+          persistentVolumeClaim:
+            claimName: mlops-repe-outputs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlops-repe-backend
+  namespace: mlops-repe
+spec:
+  selector:
+    app: mlops-repe-backend
+  ports:
+    - name: http
+      port: 5000
+      targetPort: http
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlops-repe-frontend
+  namespace: mlops-repe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlops-repe-frontend
+  template:
+    metadata:
+      labels:
+        app: mlops-repe-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: docker.io/DOCKERHUB_USERNAME/mlops-repe-frontend:IMAGE_TAG
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5173
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlops-repe-frontend
+  namespace: mlops-repe
+spec:
+  selector:
+    app: mlops-repe-frontend
+  ports:
+    - name: http
+      port: 5173
+      targetPort: http
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mlops-repe
+  namespace: mlops-repe
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mlops-repe.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: mlops-repe-backend
+                port:
+                  number: 5000
+          - path: /metrics
+            pathType: Exact
+            backend:
+              service:
+                name: mlops-repe-backend
+                port:
+                  number: 5000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mlops-repe-frontend
+                port:
+                  number: 5173
