@@ -129,7 +129,7 @@ pipeline {
             script {
                 def successRecipients = env.SUCCESS_EMAIL_RECIPIENTS?.trim() ?: 'suryasatishganiga@gmail.com'
                 if (successRecipients) {
-                    emailext(
+                    mail(
                         subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                         body: """<h2>Build successful</h2>
 <p><b>Project:</b> ${env.JOB_NAME}</p>
