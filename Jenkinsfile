@@ -33,24 +33,9 @@ pipeline {
                         apt-get update
                         apt-get install -y nodejs npm
                     fi
-                    if [ "$(id -u)" = "0" ]; then
-                        apt-get update
-                        PLAYWRIGHT_PACKAGES=""
-                        for package in \
-                            libasound2 libasound2t64 libatk1.0-0 libatk-bridge2.0-0 \
-                            libcairo2 libcairo2t64 libcups2 libdbus-1-3 libdrm2 \
-                            libgbm1 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 \
-                            libx11-6 libxcb1 libxcomposite1 libxdamage1 libxext6 \
-                            libxfixes3 libxkbcommon0 libxrandr2 libatspi2.0-0 \
-                            fonts-liberation fonts-noto-color-emoji; do
-                            if apt-cache show "$package" >/dev/null 2>&1; then
-                                PLAYWRIGHT_PACKAGES="$PLAYWRIGHT_PACKAGES $package"
-                            fi
-                        done
-                        apt-get install -y $PLAYWRIGHT_PACKAGES
-                    fi
                     npm ci
                     npm run build
+                    npx playwright install-deps chromium
                     npx playwright install chromium
                     npm run test:e2e
                 '''
