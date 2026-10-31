@@ -35,7 +35,11 @@ pipeline {
                     fi
                     npm ci
                     npm run build
-                    npx playwright install-deps chromium
+                    if [ "$(id -u)" = "0" ]; then
+                        npx playwright install-deps chromium
+                    else
+                        echo "Skipping OS package installation as Jenkins user; packages should be provisioned in the container image."
+                    fi
                     npx playwright install chromium
                     npm run test:e2e
                 '''
