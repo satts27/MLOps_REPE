@@ -277,6 +277,47 @@ The pipeline creates two 5 GiB persistent volume claims for `models/` and `outpu
 
 The Kubernetes manifests are in [k8s/application.yaml](./k8s/application.yaml). They expose the frontend and backend internally and route `/api` and `/metrics` to the backend through Ingress; `/` serves the frontend. The frontend image is built with an empty `VITE_API_BASE` so browser requests use the same Ingress host. The Compose build instead sets the API base to `http://127.0.0.1:5000`.
 
+### Kubernetes availability and request-rate scaling
+
+Both Deployments use startup, readiness, and liveness probes. A startup probe allows the
+application to initialize before liveness checks begin; readiness removes a pod from its
+Service when it cannot serve traffic; liveness restarts an unhealthy pod for automatic
+self-healing.
+
+The backend HorizontalPodAutoscaler scales between one and five replicas using:
+
+- backend requests per minute, targeting 30 requests per pod per minute; and
+- CPU utilization, targeting 70%.
+
+Install Prometheus Operator and metrics-server first, then install the Prometheus Adapter
+with the provided custom metric mapping:
+
+```sh
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace
+helm upgrade --install prometheus-adapter prometheus-community/prometheus-adapter \
+  --namespace monitoring \
+  --values k8s/prometheus-adapter-values.yaml
+```
+
+Confirm that the custom metric is available:
+
+```sh
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta2" | head
+kubectl get hpa -n mlops-repe --watch
+kubectl get pods -n mlops-repe -l app=mlops-repe-backend --watch
+```
+
+Generate load to observe request-rate scaling:
+
+```sh
+for i in $(seq 1 1000); do
+  curl -s "http://mlops-repe.local/api/health" >/dev/null
+done
+```
+
 ## Prometheus and Grafana
 
 Prometheus collects backend metrics, and Grafana displays them in a dashboard. Compose uses the official prebuilt images `prom/prometheus:v3.5.0` and `grafana/grafana:12.1.0`; neither monitoring service needs a custom Dockerfile. Adding the services to Compose configures them. The following command downloads missing images, builds the backend, and creates and starts the containers:

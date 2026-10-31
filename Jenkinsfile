@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        string(name: 'SUCCESS_EMAIL_RECIPIENTS', defaultValue: '', description: 'Comma-separated email recipients for successful builds')
+    }
+
     options {
         timeout(time: 45, unit: 'MINUTES')
     }
@@ -14,6 +18,8 @@ pipeline {
                     cd frontend
                     npm ci
                     npm run build
+                    npx playwright install --with-deps chromium
+                    npm run test:e2e
                 '''
             }
         }
@@ -55,6 +61,29 @@ pipeline {
                         docker push "$DOCKERHUB_USERNAME/mlops-repe-frontend:$IMAGE_TAG"
                         docker push "$DOCKERHUB_USERNAME/mlops-repe-frontend:latest"
                     '''
+                }
+            }
+
+            post {
+                success {
+                    script {
+                        if (params.SUCCESS_EMAIL_RECIPIENTS?.trim()) {
+                            emailext(
+                                subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                                body: """<h2>Build successful</h2>
+        <p><b>Project:</b> ${env.JOB_NAME}</p>
+        <p><b>Build:</b> #${env.BUILD_NUMBER}</p>
+        <p><b>Branch:</b> ${env.GIT_BRANCH ?: 'unknown'}</p>
+        <p><b>Commit:</b> ${env.GIT_COMMIT ?: 'unknown'}</p>
+        <p><b>Console:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+        <p>Python validation, frontend build, and 12 Playwright website tests passed.</p>""",
+                                to: params.SUCCESS_EMAIL_RECIPIENTS.trim(),
+                                mimeType: 'text/html'
+                            )
+                        } else {
+                            echo 'SUCCESS_EMAIL_RECIPIENTS is empty; successful-build email skipped.'
+                        }
+                    }
                 }
             }
         }
