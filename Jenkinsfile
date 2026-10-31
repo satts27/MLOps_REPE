@@ -5,6 +5,10 @@ pipeline {
         githubPush()
     }
 
+    environment {
+        SUCCESS_EMAIL_RECIPIENTS = 'suryasatishganiga@gmail.com'
+    }
+
     options {
         timeout(time: 45, unit: 'MINUTES')
     }
