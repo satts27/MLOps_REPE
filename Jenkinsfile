@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'SUCCESS_EMAIL_RECIPIENTS', defaultValue: '', description: 'Comma-separated email recipients for successful builds')
-    }
-
     options {
         timeout(time: 45, unit: 'MINUTES')
     }
@@ -31,7 +27,7 @@ pipeline {
                     fi
                     npm ci
                     npm run build
-                    npx playwright install --with-deps chromium
+                    npx playwright install chromium
                     npm run test:e2e
                 '''
             }
@@ -118,7 +114,8 @@ pipeline {
     post {
         success {
             script {
-                if (params.SUCCESS_EMAIL_RECIPIENTS?.trim()) {
+                def successRecipients = env.SUCCESS_EMAIL_RECIPIENTS?.trim() ?: 'suryasatishganiga@gmail.com'
+                if (successRecipients) {
                     emailext(
                         subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                         body: """<h2>Build successful</h2>
@@ -128,11 +125,11 @@ pipeline {
 <p><b>Commit:</b> ${env.GIT_COMMIT ?: 'unknown'}</p>
 <p><b>Console:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
 <p>Python validation, frontend build, and 12 Playwright website tests passed.</p>""",
-                        to: params.SUCCESS_EMAIL_RECIPIENTS.trim(),
+                        to: successRecipients,
                         mimeType: 'text/html'
                     )
                 } else {
-                    echo 'SUCCESS_EMAIL_RECIPIENTS is empty; successful-build email skipped.'
+                    echo 'Successful-build recipients are empty; email skipped.'
                 }
             }
         }
