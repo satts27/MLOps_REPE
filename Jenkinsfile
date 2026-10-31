@@ -14,8 +14,21 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-                    python -m compileall -q backend ingestion experiments
+                    if command -v python >/dev/null 2>&1; then
+                        PYTHON_CMD=python
+                    elif command -v python3 >/dev/null 2>&1; then
+                        PYTHON_CMD=python3
+                    else
+                        apt-get update
+                        apt-get install -y python3
+                        PYTHON_CMD=python3
+                    fi
+                    "$PYTHON_CMD" -m compileall -q backend ingestion experiments
                     cd frontend
+                    if ! command -v npm >/dev/null 2>&1; then
+                        apt-get update
+                        apt-get install -y nodejs npm
+                    fi
                     npm ci
                     npm run build
                     npx playwright install --with-deps chromium
@@ -64,28 +77,6 @@ pipeline {
                 }
             }
 
-            post {
-                success {
-                    script {
-                        if (params.SUCCESS_EMAIL_RECIPIENTS?.trim()) {
-                            emailext(
-                                subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                                body: """<h2>Build successful</h2>
-        <p><b>Project:</b> ${env.JOB_NAME}</p>
-        <p><b>Build:</b> #${env.BUILD_NUMBER}</p>
-        <p><b>Branch:</b> ${env.GIT_BRANCH ?: 'unknown'}</p>
-        <p><b>Commit:</b> ${env.GIT_COMMIT ?: 'unknown'}</p>
-        <p><b>Console:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-        <p>Python validation, frontend build, and 12 Playwright website tests passed.</p>""",
-                                to: params.SUCCESS_EMAIL_RECIPIENTS.trim(),
-                                mimeType: 'text/html'
-                            )
-                        } else {
-                            echo 'SUCCESS_EMAIL_RECIPIENTS is empty; successful-build email skipped.'
-                        }
-                    }
-                }
-            }
         }
 
         stage('Deploy to Kubernetes') {
@@ -118,6 +109,30 @@ pipeline {
                         kubectl rollout status deployment/mlops-repe-frontend \
                             --namespace mlops-repe --timeout=180s
                     '''
+                }
+
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                if (params.SUCCESS_EMAIL_RECIPIENTS?.trim()) {
+                    emailext(
+                        subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        body: """<h2>Build successful</h2>
+<p><b>Project:</b> ${env.JOB_NAME}</p>
+<p><b>Build:</b> #${env.BUILD_NUMBER}</p>
+<p><b>Branch:</b> ${env.GIT_BRANCH ?: 'unknown'}</p>
+<p><b>Commit:</b> ${env.GIT_COMMIT ?: 'unknown'}</p>
+<p><b>Console:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+<p>Python validation, frontend build, and 12 Playwright website tests passed.</p>""",
+                        to: params.SUCCESS_EMAIL_RECIPIENTS.trim(),
+                        mimeType: 'text/html'
+                    )
+                } else {
+                    echo 'SUCCESS_EMAIL_RECIPIENTS is empty; successful-build email skipped.'
                 }
             }
         }
