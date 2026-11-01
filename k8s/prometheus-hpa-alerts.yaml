@@ -1,0 +1,28 @@
+# Applied after kube-prometheus-stack. Kept out of application.yaml so Jenkins
+# deploy still works on a cluster that does not have the Prometheus Operator CRDs.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mlops-repe-hpa
+  namespace: mlops-repe
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: mlops-repe-hpa
+      rules:
+        - alert: BackendHpaScaledOut
+          expr: |
+            kube_horizontalpodautoscaler_status_desired_replicas{
+              namespace="mlops-repe",
+              horizontalpodautoscaler="mlops-repe-backend"
+            } > 1
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: Backend HPA has scaled out
+            description: >
+              mlops-repe-backend desired replicas are {{ $value }}
+              (minimum is 1). This alert stays firing while scaled out
+              and resolves when the HPA returns to 1 replica.

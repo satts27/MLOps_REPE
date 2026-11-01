@@ -318,6 +318,30 @@ for i in $(seq 1 1000); do
 done
 ```
 
+After the Helm stack is installed, apply [k8s/prometheus-hpa-alerts.yaml](./k8s/prometheus-hpa-alerts.yaml). That `PrometheusRule` is separate from [k8s/application.yaml](./k8s/application.yaml) so a Jenkins deploy still works if the Prometheus Operator CRDs are not on the cluster.
+
+```sh
+kubectl apply -f k8s/prometheus-hpa-alerts.yaml
+```
+
+`BackendHpaScaledOut` fires when the backend HPA desired replica count stays above 1 for one minute (scaled out) and resolves when it returns to 1. It does not notify on every 2 to 3 to 4 step. Open the cluster Alertmanager UI with:
+
+```sh
+kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-alertmanager 9093:9093
+```
+
+Then browse http://127.0.0.1:9093. Compose Alertmanager on Docker is a different process and does not see this HPA metric.
+
+Compose email comes from `.env`. Cluster email is a Helm values file: copy [k8s/kube-prometheus-alertmanager-values.example.yaml](./k8s/kube-prometheus-alertmanager-values.example.yaml) to `k8s/kube-prometheus-alertmanager-values.yaml`, paste SMTP settings and the `to:` list, then:
+
+```sh
+helm upgrade prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --reuse-values \
+  --values k8s/kube-prometheus-alertmanager-values.yaml
+```
+
+Do not commit the filled `k8s/kube-prometheus-alertmanager-values.yaml` (it is gitignored).
+
 ## Prometheus and Grafana
 
 Prometheus collects backend metrics, and Grafana displays them in a dashboard. Compose uses the official prebuilt images `prom/prometheus:v3.5.0` and `grafana/grafana:12.1.0`; neither monitoring service needs a custom Dockerfile. Adding the services to Compose configures them. The following command downloads missing images, builds the backend, and creates and starts the containers:

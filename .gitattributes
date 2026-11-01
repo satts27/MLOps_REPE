@@ -1,0 +1,2 @@
+monitoring/alertmanager/entrypoint.sh text eol=lf
+monitoring/alertmanager/alertmanager.yml.template text eol=lf

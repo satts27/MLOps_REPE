@@ -5,6 +5,7 @@ __pycache__/
 .env.*
 !.env.example
 k8s/app-secrets.env
+k8s/kube-prometheus-alertmanager-values.yaml
 .mlflow/
 mlruns/
 mlflow.db
