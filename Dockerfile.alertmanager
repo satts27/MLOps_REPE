@@ -1,0 +1,12 @@
+FROM prom/alertmanager:v0.28.1 AS upstream
+
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates gettext
+
+COPY --from=upstream /bin/alertmanager /bin/alertmanager
+COPY monitoring/alertmanager/entrypoint.sh /entrypoint.sh
+COPY monitoring/alertmanager/alertmanager.yml /etc/alertmanager/alertmanager.yml
+COPY monitoring/alertmanager/alertmanager.yml.template /etc/alertmanager/alertmanager.yml.template
+
+ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]

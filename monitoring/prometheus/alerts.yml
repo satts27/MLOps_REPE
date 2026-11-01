@@ -1,0 +1,24 @@
+groups:
+  - name: mlops-repe-backend
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: Backend scrape target is down
+          description: Prometheus has not scraped job=backend successfully for more than 30 seconds.
+
+      - alert: BackendHighErrorRate
+        expr: >
+          sum(rate(backend_http_requests_total{job="backend",status=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(backend_http_requests_total{job="backend"}[5m])), 0.000001)
+          > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Backend HTTP 5xx rate is above 5 percent
+          description: More than 5 percent of backend HTTP responses are 5xx over the last 5 minutes.

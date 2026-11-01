@@ -63,13 +63,33 @@ services:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=15d
+      - --web.external-url=http://127.0.0.1:9090
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     depends_on:
       - backend
+      - alertmanager
+    restart: unless-stopped
+
+  alertmanager:
+    build:
+      context: .
+      dockerfile: Dockerfile.alertmanager
+    env_file:
+      - .env
+    environment:
+      ALERTMANAGER_EXTERNAL_URL: http://127.0.0.1:9093
+    ports:
+      - "127.0.0.1:9093:9093"
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager/alertmanager.yml.template:/etc/alertmanager/alertmanager.yml.template:ro
+      - ./monitoring/alertmanager/entrypoint.sh:/entrypoint.sh:ro
+      - alertmanager_data:/alertmanager
     restart: unless-stopped
 
   grafana:
@@ -91,3 +111,4 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  alertmanager_data:

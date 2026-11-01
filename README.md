@@ -323,7 +323,7 @@ done
 Prometheus collects backend metrics, and Grafana displays them in a dashboard. Compose uses the official prebuilt images `prom/prometheus:v3.5.0` and `grafana/grafana:12.1.0`; neither monitoring service needs a custom Dockerfile. Adding the services to Compose configures them. The following command downloads missing images, builds the backend, and creates and starts the containers:
 
 ```powershell
-docker compose up -d --build backend prometheus grafana
+docker compose up -d --build backend prometheus alertmanager grafana
 ```
 
 To start the complete application and monitoring stack in the background:
@@ -335,13 +335,14 @@ docker compose up -d --build
 For later starts when the backend image is already built and current:
 
 ```powershell
-docker compose up -d prometheus grafana
+docker compose up -d prometheus alertmanager grafana
 ```
 
 Compose also starts the backend dependency. Run commands from the project root with Docker Desktop running and `.env` configured.
 
 - Grafana: http://127.0.0.1:3000 — log in with `admin` / `admin` by default.
 - Prometheus: http://127.0.0.1:9090 — inspect the `backend` target under **Status > Targets**.
+- Alertmanager: http://127.0.0.1:9093 — firing alerts after Prometheus evaluates the rules.
 - Backend metrics: http://127.0.0.1:5000/metrics
 
 You can set `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` in `.env` before the first start. Grafana stores its initial credentials in its persistent volume; changing these environment variables later does not reset an existing account.
@@ -350,7 +351,7 @@ Verify the containers and generate an API request:
 
 ```powershell
 docker compose ps
-docker compose logs --tail 50 backend prometheus grafana
+docker compose logs --tail 50 backend prometheus alertmanager grafana
 Invoke-RestMethod http://127.0.0.1:5000/api/health
 Invoke-WebRequest http://127.0.0.1:5000/metrics
 ```
@@ -361,11 +362,52 @@ Open **Dashboards > MLOps REPE > MLOps REPE — Backend**. The provisioned dashb
 
 Prometheus scrapes `backend:5000/metrics` every 15 seconds using Docker's internal network. Route labels use templates such as `/api/market/<ticker>` to keep the number of series bounded. Scrape requests are excluded from API metrics. The Python client also exports process metrics in the Linux backend container. This monitors API HTTP failures; a prediction row with `Signal=ERROR` inside an HTTP 200 response is not an HTTP failure.
 
-Configuration lives under `monitoring/`: Prometheus scrape configuration, Grafana datasource/provider YAML, and the dashboard JSON. Restart Prometheus after editing its configuration. Grafana checks the dashboard files every 30 seconds; edit the JSON to persist dashboard changes. Prometheus retains 15 days of samples. Named Docker volumes retain monitoring data across restarts and `docker compose down`; `docker compose down -v` deletes those volumes.
+## Prometheus alerting
+
+Prometheus evaluates `monitoring/prometheus/alerts.yml` every 15 seconds and sends firing alerts to Alertmanager on the Compose network (`alertmanager:9093`). `Dockerfile.alertmanager` wraps `prom/alertmanager:v0.28.1` so SMTP settings can come from `.env`. The Alertmanager UI is published at `127.0.0.1:9093`.
+
+Rules:
+
+- `BackendDown` — `up{job="backend"} == 0` for 30 seconds
+- `BackendHighErrorRate` — HTTP 5xx share above 5% for 2 minutes
+
+Alertmanager is configured in `monitoring/alertmanager/alertmanager.yml`. It always shows alerts in the UI at http://127.0.0.1:9093. Prometheus alerts are at http://127.0.0.1:9090/alerts.
+
+Optional email: set these in `.env` (never commit them), then rebuild Alertmanager:
+
+```env
+ALERT_EMAIL_TO=you@example.com
+SMTP_FROM=you@example.com
+SMTP_USERNAME=you@example.com
+SMTP_PASSWORD=your_app_password
+SMTP_SMARTHOST=smtp.gmail.com:587
+```
+
+```powershell
+docker compose up -d --build alertmanager
+```
+
+If those values are empty, Alertmanager stays UI-only. For Gmail, turn on 2-Step Verification and create an [App Password](https://support.google.com/accounts/answer/185833); do not use your normal account password. Other providers work if you set `SMTP_SMARTHOST` (host:port). Firing `BackendDown` then sends mail to `ALERT_EMAIL_TO` and a resolve mail when the backend comes back.
+
+To fire `BackendDown` in a demo:
+
+```powershell
+docker compose stop backend
+```
+
+Wait about 30 seconds. The alert should move from **Pending** to **Firing**. Then:
+
+```powershell
+docker compose start backend
+```
+
+The alert resolves after the next successful scrape. `BackendHighErrorRate` stays inactive until the API returns 5xx responses. Restart Prometheus after editing `alerts.yml` or `prometheus.yml`.
+
+Configuration lives under `monitoring/`: Prometheus scrape configuration, alert rules, Alertmanager YAML, Grafana datasource/provider YAML, and the dashboard JSON. Restart Prometheus after editing its scrape or rule files. Grafana checks the dashboard files every 30 seconds; edit the JSON to persist dashboard changes. Prometheus retains 15 days of samples. Named Docker volumes retain monitoring data across restarts and `docker compose down`; `docker compose down -v` deletes those volumes.
 
 Instrumentation currently supports the single-process backend used by this Compose setup. Multiple workers require Prometheus Python multiprocess configuration. Monitoring covers the backend and Prometheus itself; the collector, MLflow, MongoDB, and container resource metrics do not have exporters configured.
 
-The setup follows the official [Prometheus Flask integration](https://prometheus.github.io/client_python/exporting/http/flask/) and [Grafana provisioning documentation](https://grafana.com/docs/grafana/latest/administration/provisioning/).
+The setup follows the official [Prometheus Flask integration](https://prometheus.github.io/client_python/exporting/http/flask/), [alerting and Alertmanager](https://prometheus.io/docs/alerting/latest/overview/), and [Grafana provisioning documentation](https://grafana.com/docs/grafana/latest/administration/provisioning/).
 
 ## Useful Commands
 
